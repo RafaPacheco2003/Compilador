@@ -1,0 +1,33 @@
+// Ejemplos de manejo de strings con tipos fuertes
+let nombre: String = String::from("Juan");
+let apellido: String = String::from("Pérez");
+
+// Concatenación
+let espacio: &str = " ";
+let nombre_completo: String = nombre + espacio + &apellido;
+
+// Strings multilínea
+let mensaje: &str = "Este es un mensaje
+que ocupa varias
+líneas de código";
+
+// Strings con caracteres especiales
+let ruta: String = String::from("C:\\Users\\Juan\\Documents");
+let saludo: String = String::from("Él dijo: \"¡Hola Mundo!\"");
+
+// Comparación de strings
+if (nombre == "Juan") {
+    print("¡Hola Juan!");
+}
+
+// String vacío y caracteres
+let cadena_vacia: String = String::new();
+let caracter: char = 'A';
+
+// Caracteres especiales
+let tab: char = '\t';
+let nueva_linea: char = '\n';
+
+// Conversiones entre tipos de string
+let texto: &str = "Hola";
+let texto_owned: String = String::from(texto); 

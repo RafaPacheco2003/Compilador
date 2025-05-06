@@ -15,7 +15,7 @@ class SourceReader:
         self.source = source
         self.position = 0
         self.line = 1
-        self.column = 1
+        self.column = 0  # Iniciamos en 0 porque advance() incrementará a 1 en el primer carácter
         self.length = len(source)
     
     def peek(self) -> str:
@@ -47,14 +47,16 @@ class SourceReader:
         Returns:
             str: El carácter actual.
         """
+        # Primero incrementamos la columna para el nuevo carácter
+        self.column += 1
+        
         char = self.peek()
         self.position += 1
         
+        # Si encontramos un salto de línea, actualizamos línea y columna
         if char == '\n':
             self.line += 1
-            self.column = 1
-        else:
-            self.column += 1
+            self.column = 0  # La columna se reinicia a 0 porque advance() la incrementará a 1 en el siguiente carácter
             
         return char
     

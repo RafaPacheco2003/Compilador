@@ -1,0 +1,23 @@
+// Ejemplo de calculadora simple con tipos fuertes
+let a: i32 = 10i32;
+let b: i32 = 5i32;
+
+// Operaciones básicas con enteros
+let suma: i32 = a + b;
+let resta: i32 = a - b;
+let multiplicacion: i32 = a * b;
+let division: f32 = (a as f32) / (b as f32);
+
+// Operaciones con decimales
+let pi: f64 = 3.14159f64;
+let radio: f64 = 5.0f64;
+let area: f64 = pi * radio * radio;
+
+// Función para imprimir el resultado
+fn print_area(area: f64) {
+    if (area > 50.0f64) {
+        print("Área grande");
+    } else {
+        print("Área pequeña");
+    }
+} 

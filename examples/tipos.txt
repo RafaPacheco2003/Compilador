@@ -1,0 +1,50 @@
+// Ejemplos de declaraciones con tipos fuertes
+
+// Enteros con signo
+let x: i8 = -128;
+let y: i16 = 32767;
+let z: i32 = 2147483647;
+let big: i64 = 9223372036854775807;
+
+// Enteros sin signo
+let byte: u8 = 255;
+let port: u16 = 8080;
+let count: u32 = 4294967295;
+let very_big: u64 = 18446744073709551615;
+
+// Punto flotante
+let pi: f32 = 3.14159;
+let e: f64 = 2.71828182845904;
+
+// Booleanos
+let is_active: bool = true;
+let is_done: bool = false;
+
+// Caracteres y strings
+let letra: char = 'A';
+let mensaje: &str = "Hola, mundo!";
+let nombre: String = String::from("Juan");
+
+// Función con tipos
+fn suma(a: i32, b: i32) -> i32 {
+    return a + b;
+}
+
+// Estructura con tipos
+struct Punto {
+    x: f64,
+    y: f64
+}
+
+// Ejemplo de uso
+fn main() {
+    let resultado: i32 = suma(42i32, 58i32);
+    let punto: Punto = Punto {
+        x: 10.5f64,
+        y: 20.7f64
+    };
+    
+    if resultado > 50i32 {
+        println!("El resultado es mayor que 50");
+    }
+} 

@@ -2,6 +2,11 @@
 
 Este proyecto implementa un analizador léxico siguiendo los principios SOLID en Python. El analizador es parte de un compilador y está diseñado para ser extensible y mantenible.
 
+python test_examples.py 
+
+python test_examples.py
+
+
 ## Estructura del Proyecto
 
 ```

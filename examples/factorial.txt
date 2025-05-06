@@ -1,0 +1,16 @@
+// Función para calcular el factorial de un número usando tipos fuertes
+// u64 significa "unsigned 64 bits" - puede almacenar números de 0 a 18,446,744,073,709,551,615
+fn factorial(n: u64) -> u64 {
+    // 1u64 es el número 1 como entero sin signo de 64 bits
+    if (n <= 1u64) {
+        // Retornamos 1 especificando que es un u64
+        return 1u64;
+    }
+    // n - 1u64 asegura que la resta también se hace con números u64
+    return n * factorial(n - 1u64);
+}
+
+// Calcular factorial de 5
+// 5u64 especifica que 5 es un número u64, compatible con la función
+let result: u64 = factorial(5u64);
+print(result); 
