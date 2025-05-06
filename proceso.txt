@@ -1,0 +1,18 @@
+Proceso de análisis:
+Inicialización:
+Recibe un SourceReader con el código fuente
+Mantiene una lista de tokens encontrados
+Define las palabras clave del lenguaje
+Tokenización (tokenize()):
+Lee el código caracter por caracter
+Para cada caracter, determina qué tipo de token comienza
+Llama al método apropiado según el tipo
+Métodos de procesamiento:
+_scan_token(): Determina qué tipo de token procesar
+_string(): Procesa cadenas entre comillas
+_number(): Procesa números (enteros y decimales)
+_identifier(): Procesa identificadores y palabras clave
+Manejo de tokens:
+_add_token(): Agrega un nuevo token a la lista
+_add_error(): Agrega un token de error
+_create_token(): Crea un nuevo token
