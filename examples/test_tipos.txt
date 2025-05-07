@@ -1,0 +1,23 @@
+// Pruebas de tipos y rangos
+let x: u8 = 255;  // OK - Valor máximo para u8
+let y: u8 = 256;  // Error - Fuera de rango para u8
+let z: i8 = -128; // OK - Valor mínimo para i8
+let w: i8 = -129; // Error - Fuera de rango para i8
+
+// Pruebas de operaciones
+let a: i32 = 42;
+let b: i32 = 10;
+let c: i32 = a + b;  // OK - Operación válida
+
+// Prueba de tipos incompatibles
+let texto: string = "Hola";
+let num: i32 = 42;
+let error = texto + num;  // Error - No se puede sumar string con número
+
+// Pruebas de conversiones implícitas
+let f: f32 = 3.14;
+let i: i32 = f;  // Error - No se permite conversión implícita de f32 a i32
+
+// Pruebas de overflow
+let max_u16: u16 = 65535;  // OK - Valor máximo
+let overflow: u16 = max_u16 + 1;  // Error - Overflow 

@@ -1,0 +1,45 @@
+// Test de tipos enteros con signo (i8, i16, i32, i64)
+let num_i8: i8 = -128;        // OK - Valor mínimo i8
+let num_i8_max: i8 = 127;     // OK - Valor máximo i8
+let num_i8_over: i8 = 128;    // Error - Excede máximo i8
+let num_i8_under: i8 = -129;  // Error - Excede mínimo i8
+
+let num_i16: i16 = -32768;    // OK - Valor mínimo i16
+let num_i16_max: i16 = 32767; // OK - Valor máximo i16
+let num_i16_over: i16 = 32768;// Error - Excede máximo i16
+
+// Test de tipos enteros sin signo (u8, u16, u32, u64)
+let num_u8: u8 = 0;           // OK - Valor mínimo u8
+let num_u8_max: u8 = 255;     // OK - Valor máximo u8
+let num_u8_over: u8 = 256;    // Error - Excede máximo u8
+let num_u8_under: u8 = -1;    // Error - No permite negativos
+
+let num_u16: u16 = 65535;     // OK - Valor máximo u16
+let num_u16_over: u16 = 65536;// Error - Excede máximo u16
+
+// Test de tipos flotantes (f32, f64)
+let num_f32: f32 = 3.14159;   // OK - Precisión f32
+let num_f32_big: f32 = 3.4e38;// OK - Máximo aproximado f32
+let num_f64: f64 = 1.7e308;   // OK - Dentro del rango f64
+
+// Test de operaciones aritméticas con tipos
+let a: i16 = 1000;
+let b: i16 = 2000;
+let sum: i16 = a + b;         // OK - Resultado dentro del rango
+
+let x: u8 = 200;
+let y: u8 = 100;
+let z: u8 = x + y;            // Error - Overflow en la suma (300 > 255)
+
+// Test de conversiones implícitas (no permitidas)
+let float_val: f32 = 3.14;
+let int_val: i32 = float_val; // Error - No se permite conversión implícita
+
+// Test de tipos booleanos y caracteres
+let flag: bool = true;        // OK
+let letra: char = 'A';        // OK
+let texto: string = "Hola";   // OK
+
+// Test de operaciones entre tipos diferentes
+let mix1: i32 = num_i16 + num_i8;      // Error - Tipos diferentes
+let mix2: string = texto + num_i8;      // Error - No se puede concatenar string con número 

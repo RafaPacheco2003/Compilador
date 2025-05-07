@@ -4,6 +4,7 @@ from ..tokens.token import Token
 from ..tokens.token_type import TokenType
 from ..readers.source_reader import SourceReader
 from ..types.data_type import DataType
+from ..types.data_type import TYPES
 
 class Lexer(LexerInterface):
     """
@@ -23,22 +24,11 @@ class Lexer(LexerInterface):
         self.tokens: List[Token] = []
         self.current_token_index = 0
         self.start_position = 0
+        self.source = reader.source
         
         # Diccionario de palabras reservadas
         self.keywords: Dict[str, TokenType] = {
             "let": TokenType.LET,
-            "mut": TokenType.MUT,
-            "fn": TokenType.FN,
-            "struct": TokenType.STRUCT,
-            "enum": TokenType.ENUM,
-            "impl": TokenType.IMPL,
-            "pub": TokenType.PUB,
-            "return": TokenType.RETURN,
-            "if": TokenType.IF,
-            "else": TokenType.ELSE,
-            "while": TokenType.WHILE,
-            "for": TokenType.FOR,
-            "in": TokenType.IN,
             "true": TokenType.TRUE,
             "false": TokenType.FALSE,
         }
@@ -57,8 +47,7 @@ class Lexer(LexerInterface):
             "f64": TokenType.TYPE_F64,
             "bool": TokenType.TYPE_BOOL,
             "char": TokenType.TYPE_CHAR,
-            "str": TokenType.TYPE_STR,
-            "String": TokenType.TYPE_STRING,
+            "string": TokenType.TYPE_STRING,
         }
 
     def tokenize(self) -> List[Token]:
@@ -120,6 +109,10 @@ class Lexer(LexerInterface):
         elif char == '-': 
             if self._match('>'):
                 self._add_token(TokenType.ARROW)
+            elif self.reader.peek().isdigit():
+                # Si el siguiente carácter es un dígito, procesar como número negativo
+                self.start_position = self.reader.position - 1  # Incluir el signo menos
+                self._number()
             else:
                 self._add_token(TokenType.MINUS)
         elif char == '+': self._add_token(TokenType.PLUS)
@@ -194,7 +187,17 @@ class Lexer(LexerInterface):
             
         # Consumir la comilla de cierre
         self.reader.advance()
-        self._add_token(TokenType.STRING, value)
+        
+        # Crear token con tipo string
+        token = Token(
+            type=TokenType.STRING,
+            lexeme=self.reader.source[self.start_position:self.reader.position],
+            literal=value,
+            line=self.reader.line,
+            column=self.reader.column,
+            data_type=TYPES['string']
+        )
+        self.tokens.append(token)
 
     def _char(self) -> None:
         """
@@ -214,44 +217,91 @@ class Lexer(LexerInterface):
             
         # Consumir la comilla de cierre
         self.reader.advance()
-        self._add_token(TokenType.CHAR, value)
+        
+        # Crear token con tipo char
+        token = Token(
+            type=TokenType.CHAR,
+            lexeme=self.reader.source[self.start_position:self.reader.position],
+            literal=value,
+            line=self.reader.line,
+            column=self.reader.column,
+            data_type=TYPES['char']
+        )
+        self.tokens.append(token)
 
     def _number(self) -> None:
-        """
-        Procesa un número (entero o decimal) y sus posibles sufijos de tipo.
-        """
+        """Procesa un número (entero o flotante)."""
+        # Determinar si es negativo
+        is_negative = self.reader.source[self.start_position] == '-'
+        
+        # Consumir dígitos antes del punto decimal
         while self.reader.peek().isdigit():
             self.reader.advance()
             
-        # Buscar parte decimal
-        is_float = False
+        # Verificar si hay punto decimal
+        has_decimal = False
+        decimal_digits = 0
         if self.reader.peek() == '.' and self.reader.peek_next().isdigit():
-            is_float = True
-            self.reader.advance()  # Consumir el punto
+            has_decimal = True
+            # Consumir el punto
+            self.reader.advance()
+            
+            # Consumir dígitos después del punto y contarlos
             while self.reader.peek().isdigit():
+                decimal_digits += 1
                 self.reader.advance()
                 
-        # Buscar sufijo de tipo
-        suffix = ""
-        if self.reader.peek().isalpha():
-            while self.reader.peek().isalnum():
-                suffix += self.reader.advance()
-                
-        # Obtener el valor completo del número
-        value = self.reader.source[self.start_position:self.reader.position-len(suffix) if suffix else self.reader.position]
-        number = float(value)
-        
-        # Crear token con sufijo de tipo si existe
-        token = Token(
-            type=TokenType.NUMBER,
-            lexeme=self.reader.source[self.start_position:self.reader.position],
-            literal=number,
-            line=self.reader.line,
-            column=self.reader.column,
-            literal_suffix=suffix if suffix else None
-        )
-        
-        self.tokens.append(token)
+        # Obtener el valor literal
+        try:
+            text = self.reader.source[self.start_position:self.reader.position]
+            if has_decimal:
+                literal = float(text)
+                # Usar f64 si hay más de 7 dígitos decimales (precisión de f32)
+                data_type = TYPES['f64'] if decimal_digits > 7 else TYPES['f32']
+            else:
+                literal = int(text)
+                # Si es negativo, solo puede ser tipo signed
+                if is_negative:
+                    if literal >= -128:
+                        data_type = TYPES['i8']
+                    elif literal >= -32768:
+                        data_type = TYPES['i16']
+                    elif literal >= -2147483648:
+                        data_type = TYPES['i32']
+                    else:
+                        data_type = TYPES['i64']
+                else:
+                    # Para positivos, elegir el tipo más pequeño que lo pueda contener
+                    if literal <= 127:
+                        data_type = TYPES['i8']
+                    elif literal <= 255:
+                        data_type = TYPES['u8']
+                    elif literal <= 32767:
+                        data_type = TYPES['i16']
+                    elif literal <= 65535:
+                        data_type = TYPES['u16']
+                    elif literal <= 2147483647:
+                        data_type = TYPES['i32']
+                    elif literal <= 4294967295:
+                        data_type = TYPES['u32']
+                    elif literal <= 9223372036854775807:
+                        data_type = TYPES['i64']
+                    else:
+                        data_type = TYPES['u64']
+                    
+            # Crear token con el tipo correcto
+            token = Token(
+                type=TokenType.NUMBER,
+                lexeme=text,
+                literal=literal,
+                line=self.reader.line,
+                column=self.reader.column,
+                data_type=data_type
+            )
+            self.tokens.append(token)
+        except ValueError:
+            line, column = self.reader.get_position_info()
+            self._add_error(f"Número inválido: {text}", line, column)
 
     def _identifier(self) -> None:
         """
@@ -265,7 +315,21 @@ class Lexer(LexerInterface):
             
         # Verificar si es una palabra clave o un tipo
         if value in self.keywords:
-            self._add_token(self.keywords[value])
+            token_type = self.keywords[value]
+            # Asignar tipo de dato para true/false
+            data_type = None
+            if value in ['true', 'false']:
+                data_type = TYPES['bool']
+                
+            token = Token(
+                type=token_type,
+                lexeme=value,
+                literal=value == 'true' if value in ['true', 'false'] else None,
+                line=self.reader.line,
+                column=self.reader.column,
+                data_type=data_type
+            )
+            self.tokens.append(token)
         elif value in self.type_keywords:
             token = Token(
                 type=TokenType.TYPE,
@@ -280,24 +344,8 @@ class Lexer(LexerInterface):
             self._add_token(TokenType.IDENTIFIER, value)
 
     def _get_data_type(self, type_name: str) -> Optional[DataType]:
-        """
-        Convierte un nombre de tipo en un objeto DataType.
-        """
-        type_map = {
-            "i8": DataType.i8,
-            "i16": DataType.i16,
-            "i32": DataType.i32,
-            "i64": DataType.i64,
-            "u8": DataType.u8,
-            "u16": DataType.u16,
-            "u32": DataType.u32,
-            "u64": DataType.u64,
-            "f32": DataType.f32,
-            "f64": DataType.f64,
-            "bool": DataType.bool,
-            "char": DataType.char,
-        }
-        return type_map[type_name]() if type_name in type_map else None
+        """Obtiene el tipo de dato correspondiente al nombre."""
+        return TYPES.get(type_name)
 
     def _match(self, expected: str) -> bool:
         """

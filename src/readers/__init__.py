@@ -1,1 +1,1 @@
- 
+"""Source code readers module.""" 

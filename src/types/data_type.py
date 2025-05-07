@@ -1,107 +1,176 @@
 from dataclasses import dataclass
 from typing import Optional, Union, Any
-import struct
+import math
 
-@dataclass
 class DataType:
-    """
-    Clase que representa un tipo de dato en el lenguaje.
-    Implementa verificación de rangos y conversiones similares a Rust.
-    """
-    name: str
-    size: int  # tamaño en bits
-    signed: bool  # True para tipos con signo, False para unsigned
-    is_float: bool  # True para tipos flotantes
-    min_value: Union[int, float]
-    max_value: Union[int, float]
+    def __init__(self, name: str, size: int, is_signed: bool = True, is_float: bool = False,
+                 min_value: Union[int, float] = None, max_value: Union[int, float] = None):
+        self.name = name
+        self.size = size
+        self.is_signed = is_signed
+        self.is_float = is_float
+        self.min_value = min_value
+        self.max_value = max_value
+        self.is_numeric = not name in ['bool', 'char', 'string']
 
-    @staticmethod
-    def i8() -> 'DataType':
-        return DataType("i8", 8, True, False, -128, 127)
+    def __eq__(self, other: 'DataType') -> bool:
+        if other is None:
+            return False
+        return (self.name == other.name and
+                self.size == other.size and
+                self.is_signed == other.is_signed and
+                self.is_float == other.is_float)
 
-    @staticmethod
-    def i16() -> 'DataType':
-        return DataType("i16", 16, True, False, -32768, 32767)
-
-    @staticmethod
-    def i32() -> 'DataType':
-        return DataType("i32", 32, True, False, -2147483648, 2147483647)
-
-    @staticmethod
-    def i64() -> 'DataType':
-        return DataType("i64", 64, True, False, -9223372036854775808, 9223372036854775807)
-
-    @staticmethod
-    def u8() -> 'DataType':
-        return DataType("u8", 8, False, False, 0, 255)
-
-    @staticmethod
-    def u16() -> 'DataType':
-        return DataType("u16", 16, False, False, 0, 65535)
-
-    @staticmethod
-    def u32() -> 'DataType':
-        return DataType("u32", 32, False, False, 0, 4294967295)
-
-    @staticmethod
-    def u64() -> 'DataType':
-        return DataType("u64", 64, False, False, 0, 18446744073709551615)
-
-    @staticmethod
-    def f32() -> 'DataType':
-        return DataType("f32", 32, True, True, float('-inf'), float('inf'))
-
-    @staticmethod
-    def f64() -> 'DataType':
-        return DataType("f64", 64, True, True, float('-inf'), float('inf'))
-
-    @staticmethod
-    def bool() -> 'DataType':
-        return DataType("bool", 1, False, False, 0, 1)
-
-    @staticmethod
-    def char() -> 'DataType':
-        return DataType("char", 32, False, False, 0, 0x10FFFF)  # Máximo valor Unicode
-
-    def check_value(self, value: Any) -> bool:
-        """
-        Verifica si un valor está dentro del rango válido para este tipo.
-        """
-        if isinstance(value, bool) and self.name == "bool":
-            return True
-        
-        if isinstance(value, str):
-            if self.name == "char":
-                return len(value) == 1 and ord(value) <= self.max_value
-            return True  # Para strings normales
+    def check_value(self, value) -> bool:
+        """Verifica si un valor está dentro del rango permitido para este tipo."""
+        if not self.is_numeric:
+            if self.name == 'bool':
+                return isinstance(value, bool) or value in [0, 1]
+            if self.name == 'char':
+                return isinstance(value, str) and len(value) == 1
+            if self.name == 'string':
+                return isinstance(value, str)
+            return False
             
-        if isinstance(value, (int, float)):
-            return self.min_value <= value <= self.max_value
+        try:
+            # Convertir strings a números si es posible
+            if isinstance(value, str):
+                value = float(value) if self.is_float else int(value)
+                
+            # Para tipos sin signo, verificar que no sea negativo
+            if not self.is_signed and value < 0:
+                return False
+                
+            # Verificar el rango
+            if self.min_value is not None and value < self.min_value:
+                return False
+            if self.max_value is not None and value > self.max_value:
+                return False
+                
+            return True
+        except (ValueError, TypeError):
+            return False
+
+    def is_numeric(self) -> bool:
+        """
+        Verifica si el tipo es numérico (entero o flotante).
+        """
+        return not self.name in ["bool", "char", "string"]
+
+    def can_convert_from(self, other: 'DataType') -> bool:
+        """Verifica si se puede convertir desde otro tipo."""
+        if not self.is_numeric or not other.is_numeric:
+            return self.name == other.name
+            
+        # Permitir conversión a tipo más grande
+        if self.is_float and other.is_float:
+            return self.size >= other.size
+            
+        # Permitir conversión de entero a float
+        if self.is_float and not other.is_float:
+            return True
+            
+        # Entre enteros
+        if not self.is_float and not other.is_float:
+            if not self.is_signed and other.is_signed:
+                return False
+            return self.size >= other.size
             
         return False
 
+    def get_operation_result(self, other: 'DataType', operator: str) -> Optional['DataType']:
+        """
+        Determina el tipo resultante de una operación entre dos tipos.
+        Implementa reglas precisas para operaciones entre tipos.
+        
+        Args:
+            other (DataType): Segundo tipo en la operación
+            operator (str): Operador ('+', '-', '*', '/', '%')
+            
+        Returns:
+            Optional[DataType]: Tipo resultante o None si la operación no es válida
+        """
+        # Operaciones con strings
+        if self.name == "string" or other.name == "string":
+            if operator == "+" and self.name == "string" and other.name == "string":
+                return DataType.string()
+            return None
+
+        # Operaciones numéricas
+        if not (self.is_numeric() and other.is_numeric()):
+            return None
+            
+        if operator in ['+', '-', '*', '/', '%']:
+            # División siempre produce float
+            if operator == '/':
+                return DataType.f64() if self.size > 32 or other.size > 32 else DataType.f32()
+                
+            # Módulo solo entre enteros
+            if operator == '%':
+                if self.is_float or other.is_float:
+                    return None
+                # Usar el tipo más grande
+                max_size = max(self.size, other.size)
+                if self.is_signed or other.is_signed:
+                    return DataType.i64() if max_size > 32 else DataType.i32()
+                return DataType.u64() if max_size > 32 else DataType.u32()
+                
+            # Otras operaciones aritméticas
+            if self.is_float or other.is_float:
+                return DataType.f64() if max(self.size, other.size) > 32 else DataType.f32()
+                
+            # Entre enteros
+            max_size = max(self.size, other.size)
+            if self.is_signed or other.is_signed:
+                return DataType.i64() if max_size > 32 else DataType.i32()
+            return DataType.u64() if max_size > 32 else DataType.u32()
+
+        return None
+
     def cast_value(self, value: Any) -> Optional[Any]:
         """
-        Intenta convertir un valor al tipo correcto, retorna None si no es posible.
+        Intenta convertir un valor al tipo correcto.
+        Implementa reglas estrictas de conversión de valores.
+        
+        Args:
+            value: Valor a convertir
+            
+        Returns:
+            Optional[Any]: Valor convertido o None si la conversión no es válida
         """
         try:
             if self.name == "bool":
-                return bool(value)
+                if isinstance(value, bool):
+                    return value
+                return None
                 
             if self.name == "char":
                 if isinstance(value, str) and len(value) == 1:
                     return value
+                if isinstance(value, int) and 0 <= value <= 0x10FFFF:
+                    return chr(value)
                 return None
                 
+            if self.name == "string":
+                return str(value)
+                
             if self.is_float:
-                value = float(value)
-            else:
-                value = int(float(value))
+                if isinstance(value, (int, float)):
+                    float_val = float(value)
+                    if self.min_value <= float_val <= self.max_value:
+                        return float_val
+                return None
                 
-            if self.check_value(value):
-                return value
-                
+            # Enteros
+            if isinstance(value, (int, float)):
+                int_val = int(float(value))
+                if float(int_val) != float(value):  # Verificar pérdida de precisión
+                    return None
+                if self.min_value <= int_val <= self.max_value:
+                    return int_val
+                    
             return None
+            
         except (ValueError, TypeError):
             return None
 
@@ -112,9 +181,26 @@ class DataType:
         """
         if self.is_float:
             return f"f{self.size}"
-        if not self.signed:
+        if not self.is_signed:
             return f"u{self.size}"
         return f"i{self.size}"
 
     def __str__(self) -> str:
         return self.name 
+
+# Definición de tipos básicos
+TYPES = {
+    'i8': DataType('i8', 1, True, False, -128, 127),
+    'i16': DataType('i16', 2, True, False, -32768, 32767),
+    'i32': DataType('i32', 4, True, False, -2147483648, 2147483647),
+    'i64': DataType('i64', 8, True, False, -9223372036854775808, 9223372036854775807),
+    'u8': DataType('u8', 1, False, False, 0, 255),
+    'u16': DataType('u16', 2, False, False, 0, 65535),
+    'u32': DataType('u32', 4, False, False, 0, 4294967295),
+    'u64': DataType('u64', 8, False, False, 0, 18446744073709551615),
+    'f32': DataType('f32', 4, True, True, float('-3.4e38'), float('3.4e38')),
+    'f64': DataType('f64', 8, True, True, float('-1.8e308'), float('1.8e308')),
+    'bool': DataType('bool', 1, False, False, 0, 1),
+    'char': DataType('char', 1, False, False, 0, 255),
+    'string': DataType('string', 0, False, False)
+} 
